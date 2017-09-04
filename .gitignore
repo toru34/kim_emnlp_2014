@@ -2,7 +2,7 @@
 *.ipynb
 .DS_Store
 test.py
-./data/GoogleNews-vectors-negative300.bin
+data/GoogleNews-vectors-negative300.bin
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
