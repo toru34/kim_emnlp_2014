@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--num_filters', type=int, default=20, help='number of filters in each window size [default: 20]')
     parser.add_argument('--emb_dim', type=int, default=64, help='embedding size for each word [default: 64]')
     parser.add_argument('--vocab_size', type=int, default=30000, help='vocabulary size [default: 30000]')
+    parser.add_argument('--dropout_prob', type=float, default=0.5, help='dropout probability [default: 0.5]')
     args = parser.parse_args()
 
     VOCAB_SIZE = args.vocab_size
@@ -35,6 +36,7 @@ def main():
     NUM_FIL = args.num_filters
     BATCH_SIZE = args.batch_size
     N_EPOCHS = args.num_epochs
+    DROPOUT_PROB = args.dropout_prob
 
     # Build dataset
     w2c = build_word2count('./data/rt-polarity.neg', min_len=5)
@@ -55,7 +57,7 @@ def main():
     trainer = dy.AdamTrainer(model)
 
     layers = [
-        CNN(model, VOCAB_SIZE, EMB_DIM, NUM_FIL, dy.tanh),
+        CNN(model, VOCAB_SIZE, EMB_DIM, NUM_FIL, dy.tanh, DROPOUT_PROB),
         Dense(model, NUM_FIL*3, OUT_DIM, dy.logistic),
     ]
 
@@ -80,7 +82,7 @@ def main():
             train_mb_losses = []
             for instance_x, instance_y in zip(train_X_mb, train_y_mb):
                 t = dy.scalarInput(instance_y)
-                y = f_props(layers, instance_x)
+                y = f_props(layers, instance_x, train=True)
 
                 train_b_preds.append(binary_pred(y.value()))
                 loss = dy.binary_log_loss(y, t)
@@ -107,7 +109,7 @@ def main():
 
         for instance_x, instance_y in zip(valid_X, valid_y):
             t = dy.scalarInput(instance_y)
-            y = f_props(layers, instance_x)
+            y = f_props(layers, instance_x, train=False)
 
             valid_b_preds.append(binary_pred(y.value()))
             loss = dy.binary_log_loss(y, t)

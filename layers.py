@@ -2,7 +2,7 @@ import _dynet as dy
 import numpy as np
 
 class CNN:
-    def __init__(self, model, vocab_size, emb_dim, num_fil, function):
+    def __init__(self, model, vocab_size, emb_dim, num_fil, function, dropout_prob=0.5):
         self.V = model.add_lookup_parameters((vocab_size, emb_dim))
         self._W_w3 = model.add_parameters((3, emb_dim, 1, num_fil))
         self._W_w4 = model.add_parameters((4, emb_dim, 1, num_fil))
@@ -13,6 +13,7 @@ class CNN:
         self.function = function
         self.emb_dim = emb_dim
         self.num_fil = num_fil
+        self.dropout_prob = dropout_prob
 
     def associate_parameters(self):
         self.W_w3 = dy.parameter(self._W_w3)
@@ -22,7 +23,7 @@ class CNN:
         self.b_w4 = dy.parameter(self._b_w4)
         self.b_w5 = dy.parameter(self._b_w5)
 
-    def f_prop(self, sentence):
+    def f_prop(self, sentence, train):
         sen_len = len(sentence)
 
         word_embs = dy.concatenate([dy.lookup(self.V, word) for word in sentence], d=1)
@@ -47,6 +48,13 @@ class CNN:
 
         z = dy.concatenate([poold_w3, poold_w4, poold_w5])
 
+        if train:
+            # Apply dropout
+            p = dy.random_bernoulli(z.dim()[0], self.dropout_prob)
+            z = dy.cmult(z, p)
+        else:
+            z = z*self.dropout_prob
+
         return z
 
 class Dense:
@@ -59,5 +67,5 @@ class Dense:
         self.W = dy.parameter(self._W)
         self.b = dy.parameter(self._b)
 
-    def f_prop(self, x):
+    def f_prop(self, x, train):
         return self.function(self.W*x + self.b)
