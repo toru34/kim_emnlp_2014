@@ -15,10 +15,11 @@ DyNet implementation for the paper Convolutional Neural Networks for Sentence Cl
 - `--emb_dim`: Embedding size for each word [default: 64]
 - `--vocab_size`: Vocabulary size [default: 30000]
 - `--dropout_prob`: Dropout probability [default: 0.5]
+- `--embedding_strategy`: Embedding strategy. \'rand\': random initialization. \'static\': load pretrained embeddings and do not update during the training. \'non-static\': load pretrained embeddings and update during the training. [default: \'rand\']
 
 ### How to run (example)
 ```
-python main.py --num_epochs 10 --batch_size 64 --num_filters 100 --emb_dim 128 --vocab_size 20000 --dropout_prob 0.5
+python main.py --num_epochs 10 --batch_size 64 --num_filters 100 --emb_dim 128 --vocab_size 20000 --dropout_prob 0.5 --embedding_strategy 'rand'
 ```
 
 ### References
