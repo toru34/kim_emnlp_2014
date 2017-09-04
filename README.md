@@ -14,10 +14,11 @@ DyNet implementation for the paper Convolutional Neural Networks for Sentence Cl
 - `--num_filters`: Number of filters in each window size [default: 20]
 - `--emb_dim`: Embedding size for each word [default: 64]
 - `--vocab_size`: Vocabulary size [default: 30000]
+- `--dropout_prob`: Dropout probability [default: 0.5]
 
 ### How to run
 ```
-python main.py --num_epochs 10 --batch_size 64 --num_filters 100 --emb_dim 128 --vocab_size 20000
+python main.py --num_epochs 10 --batch_size 64 --num_filters 100 --emb_dim 128 --vocab_size 20000 --dropout_prob 0.5
 ```
 
 ### References
