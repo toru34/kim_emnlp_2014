@@ -2,8 +2,10 @@ import _dynet as dy
 import numpy as np
 
 class CNN:
-    def __init__(self, model, vocab_size, emb_dim, num_fil, function, dropout_prob=0.5):
+    def __init__(self, model, vocab_size, emb_dim, num_fil, function, dropout_prob=0.5, V_init=None, V_update=True):
         self.V = model.add_lookup_parameters((vocab_size, emb_dim))
+        if V_init is not None:
+            self.V.init_from_array(V_init)
         self._W_w3 = model.add_parameters((3, emb_dim, 1, num_fil))
         self._W_w4 = model.add_parameters((4, emb_dim, 1, num_fil))
         self._W_w5 = model.add_parameters((5, emb_dim, 1, num_fil))
@@ -13,6 +15,7 @@ class CNN:
         self.function = function
         self.emb_dim = emb_dim
         self.num_fil = num_fil
+        self.V_update = V_update
         self.dropout_prob = dropout_prob
 
     def associate_parameters(self):
@@ -26,7 +29,7 @@ class CNN:
     def f_prop(self, sentence, train):
         sen_len = len(sentence)
 
-        word_embs = dy.concatenate([dy.lookup(self.V, word) for word in sentence], d=1)
+        word_embs = dy.concatenate([dy.lookup(self.V, word, self.V_update) for word in sentence], d=1)
         word_embs = dy.transpose(word_embs)
         word_embs = dy.reshape(word_embs, (sen_len, self.emb_dim, 1))
 

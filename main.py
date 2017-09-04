@@ -2,13 +2,14 @@ import math
 import time
 import argparse
 
+import gensim
 import _dynet as dy
 import numpy as np
 from sklearn.utils import shuffle
 from sklearn.metrics import f1_score, accuracy_score
 from sklearn.model_selection import train_test_split
 
-from utils import build_word2count, build_dataset, f_props, associate_parameters, binary_pred
+from utils import f_props, associate_parameters, binary_pred, build_word2count, build_dataset
 from layers import CNN, Dense
 
 RANDOM_STATE = 42
@@ -19,6 +20,8 @@ dyparams.set_autobatch(True)
 dyparams.set_autobatch(RANDOM_STATE)
 dyparams.init()
 
+rng = np.random.RandomState(RANDOM_STATE)
+
 def main():
     parser = argparse.ArgumentParser(description='CNN sentence classifier in DyNet')
 
@@ -28,36 +31,76 @@ def main():
     parser.add_argument('--emb_dim', type=int, default=64, help='embedding size for each word [default: 64]')
     parser.add_argument('--vocab_size', type=int, default=30000, help='vocabulary size [default: 30000]')
     parser.add_argument('--dropout_prob', type=float, default=0.5, help='dropout probability [default: 0.5]')
+    parser.add_argument('--embedding_strategy', type=str, default='rand', help='embedding strategy. \'rand\': random initialization, \'static\': load pretrained embeddings and do not update during the training. \'non-static\': load pretrained embeddings and update during the training. [default: \'rand\']')
     args = parser.parse_args()
 
-    VOCAB_SIZE = args.vocab_size
-    EMB_DIM = args.emb_dim
+    vocab_size = args.vocab_size
+    emb_dim = args.emb_dim
     OUT_DIM = 1
     NUM_FIL = args.num_filters
     BATCH_SIZE = args.batch_size
     N_EPOCHS = args.num_epochs
     DROPOUT_PROB = args.dropout_prob
+    V_STRATEGY = args.embedding_strategy
 
-    # Build dataset
-    w2c = build_word2count('./data/rt-polarity.neg', min_len=5)
-    w2c = build_word2count('./data/rt-polarity.pos', w2c, min_len=5)
+    # Build dataset ============================================================================
+    if V_STRATEGY == 'rand':
+        V_UPDATE = True
+        emb_dim = 64
 
-    data_neg, w2i, i2w = build_dataset('./data/rt-polarity.neg', vocab_size=30000, w2c=w2c, min_len=5)
-    data_pos, _, _ = build_dataset('./data/rt-polarity.pos', w2i=w2i, min_len=5)
+        w2c = build_word2count('./data/rt-polarity.neg', min_len=5)
+        w2c = build_word2count('./data/rt-polarity.pos', w2c, min_len=5)
+        data_neg, w2i, i2w = build_dataset('./data/rt-polarity.neg', vocab_size=vocab_size, w2c=w2c, min_len=5)
+        data_pos, _, _ = build_dataset('./data/rt-polarity.pos', w2i=w2i, min_len=5)
+
+        V_init = None
+    elif V_STRATEGY == 'static':
+        V_UPDATE = False
+        emb_dim = 300
+        gle_model = gensim.models.KeyedVectors.load_word2vec_format('./data/GoogleNews-vectors-negative300.bin', binary=True)
+        vocab = gle_model.wv.vocab.keys()
+
+        w2c = build_word2count('./data/rt-polarity.neg', vocab=vocab, min_len=5)
+        w2c = build_word2count('./data/rt-polarity.pos', w2c=w2c, vocab=vocab, min_len=5)
+        data_neg, w2i, i2w = build_dataset('./data/rt-polarity.neg', vocab_size=vocab_size, w2c=w2c, min_len=5)
+        data_pos, _, _ = build_dataset('./data/rt-polarity.pos', w2i=w2i, min_len=5)
+
+        V_init = np.array([gle_model[w] for w in w2i.keys()])
+
+        import gc
+        del gle_model
+        gc.collect()
+    elif V_STRATEGY == 'non-static':
+        V_UPDATE = True
+        emb_dim = 300
+        gle_model = gensim.models.KeyedVectors.load_word2vec_format('./data/GoogleNews-vectors-negative300.bin', binary=True)
+        vocab = gle_model.wv.vocab.keys()
+
+        w2c = build_word2count('./data/rt-polarity.neg', min_len=5)
+        w2c = build_word2count('./data/rt-polarity.pos', w2c, min_len=5)
+        data_neg, w2i, i2w = build_dataset('./data/rt-polarity.neg', vocab_size=vocab_size, w2c=w2c, min_len=5)
+        data_pos, _, _ = build_dataset('./data/rt-polarity.pos', w2i=w2i, min_len=5)
+
+        V_init = np.array([gle_model[w] if (w in vocab) else rng.normal(size=(emb_dim)) for w in w2i.keys()])
+
+        import gc
+        del gle_model
+        gc.collect()
+
+    vocab_size = len(w2i)
 
     data_X = data_neg + data_pos
     data_y = [0]*len(data_neg) + [1]*len(data_pos)
-
     data_X, data_y = shuffle(data_X, data_y, random_state=RANDOM_STATE)
 
     train_X, valid_X, train_y, valid_y = train_test_split(data_X, data_y, test_size=0.1, random_state=RANDOM_STATE)
 
-    # Build model
+    # Build model ==============================================================================
     model = dy.Model()
     trainer = dy.AdamTrainer(model)
 
     layers = [
-        CNN(model, VOCAB_SIZE, EMB_DIM, NUM_FIL, dy.tanh, DROPOUT_PROB),
+        CNN(model, vocab_size, emb_dim, NUM_FIL, dy.tanh, DROPOUT_PROB, V_init=V_init, V_update=V_UPDATE),
         Dense(model, NUM_FIL*3, OUT_DIM, dy.logistic),
     ]
 
