@@ -16,7 +16,7 @@ DyNet implementation for the paper Convolutional Neural Networks for Sentence Cl
 - `--vocab_size`: Vocabulary size [default: 30000]
 - `--dropout_prob`: Dropout probability [default: 0.5]
 
-### How to run
+### How to run (example)
 ```
 python main.py --num_epochs 10 --batch_size 64 --num_filters 100 --emb_dim 128 --vocab_size 20000 --dropout_prob 0.5
 ```
