@@ -8,7 +8,7 @@ DyNet implementation for the paper Convolutional Neural Networks for Sentence Cl
 - NumPy 1.12.1+
 - scikit-learn 0.19.0+
 
-### Arguments
+### Arguments for training
 - `--num_epochs`: Number of epochs for training [default: 3]
 - `--batch_size`: Batch size for training [default: 32]
 - `--num_filters`: Number of filters in each window size [default: 20]
@@ -17,10 +17,16 @@ DyNet implementation for the paper Convolutional Neural Networks for Sentence Cl
 - `--dropout_prob`: Dropout probability [default: 0.5]
 - `--embedding_strategy`: Embedding strategy. \'rand\': random initialization. \'static\': load pretrained embeddings and do not update during the training. \'non-static\': load pretrained embeddings and update during the training. [default: \'rand\']
 
-### How to run (example)
+### Arguments for testing
+Work in progress
+
+### How to train (example)
 ```
-python main.py --num_epochs 10 --batch_size 64 --num_filters 100 --emb_dim 128 --vocab_size 20000 --dropout_prob 0.5 --embedding_strategy 'rand'
+python train.py --num_epochs 10 --batch_size 64 --num_filters 100 --emb_dim 128 --vocab_size 20000 --dropout_prob 0.5 --embedding_strategy 'rand'
 ```
+
+### How to test (example)
+Work in progress
 
 ### References
 - Y. Kim. 2014. Convolutional Neural Networks for Sentence Classification. In Proceedings of EMNLP 2014 (original paper)
