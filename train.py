@@ -1,3 +1,4 @@
+import os
 import math
 import time
 import argparse
@@ -32,6 +33,7 @@ def main():
 
     if args.gpu >= 0:
         import _gdynet as dy
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
     else:
         import _dynet as dy
 
