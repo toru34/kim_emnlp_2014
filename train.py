@@ -12,19 +12,15 @@ from sklearn.model_selection import train_test_split
 from utils import f_props, associate_parameters, binary_pred, build_word2count, build_dataset
 from layers import CNN, Dense
 
-RANDOM_STATE = 42
-
-# Activate autobatching
-dyparams = dy.DynetParams()
-dyparams.set_autobatch(True)
-dyparams.set_autobatch(RANDOM_STATE)
-dyparams.init()
+RANDOM_STATE = 34
 
 rng = np.random.RandomState(RANDOM_STATE)
 
 def main():
     parser = argparse.ArgumentParser(description='CNN sentence classifier in DyNet')
 
+    parser.add_argument('--gpu', type=int, default=-1, help='gpu id to use. for cpu, set -1 [default: -1]')
+    parser.add_argument('--memory_size', type=int, default=1024, help='memory[mb] to allocate [default: 1024]')
     parser.add_argument('--num_epochs', type=int, default=3, help='number of epochs for training [default: 3]')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size for training [default: 32]')
     parser.add_argument('--num_filters', type=int, default=20, help='number of filters in each window size [default: 20]')
@@ -34,8 +30,14 @@ def main():
     parser.add_argument('--embedding_strategy', type=str, default='rand', help='embedding strategy. \'rand\': random initialization, \'static\': load pretrained embeddings and do not update during the training. \'non-static\': load pretrained embeddings and update during the training. [default: \'rand\']')
     args = parser.parse_args()
 
+    if args.gpu >= 0:
+        import _gdynet as dy
+    else:
+        import _dynet as dy
+
     vocab_size = args.vocab_size
-    emb_dim = args.emb_dim
+    MEMORY_SIZE = args.memory_size
+    EMB_DIM = args.emb_dim
     OUT_DIM = 1
     NUM_FIL = args.num_filters
     BATCH_SIZE = args.batch_size
@@ -43,10 +45,17 @@ def main():
     DROPOUT_PROB = args.dropout_prob
     V_STRATEGY = args.embedding_strategy
 
+    # Activate autobatching
+    dyparams = dy.DynetParams()
+    dyparams.set_autobatch(True)
+    dyparams.set_random_seed(RANDOM_STATE)
+    dyparams.set_mem(MEMORY_SIZE)
+    dyparams.init()
+
     # Build dataset ============================================================================
     if V_STRATEGY == 'rand':
         V_UPDATE = True
-        emb_dim = 64
+        EMB_DIM = 64
 
         w2c = build_word2count('./data/rt-polarity.neg', min_len=5)
         w2c = build_word2count('./data/rt-polarity.pos', w2c, min_len=5)
@@ -56,7 +65,7 @@ def main():
         V_init = None
     elif V_STRATEGY == 'static':
         V_UPDATE = False
-        emb_dim = 300
+        EMB_DIM = 300
         gle_model = gensim.models.KeyedVectors.load_word2vec_format('./data/GoogleNews-vectors-negative300.bin', binary=True)
         vocab = gle_model.wv.vocab.keys()
 
@@ -72,7 +81,7 @@ def main():
         gc.collect()
     elif V_STRATEGY == 'non-static':
         V_UPDATE = True
-        emb_dim = 300
+        EMB_DIM = 300
         gle_model = gensim.models.KeyedVectors.load_word2vec_format('./data/GoogleNews-vectors-negative300.bin', binary=True)
         vocab = gle_model.wv.vocab.keys()
 
@@ -81,7 +90,7 @@ def main():
         data_neg, w2i, i2w = build_dataset('./data/rt-polarity.neg', vocab_size=vocab_size, w2c=w2c, min_len=5)
         data_pos, _, _ = build_dataset('./data/rt-polarity.pos', w2i=w2i, min_len=5)
 
-        V_init = np.array([gle_model[w] if (w in vocab) else rng.normal(size=(emb_dim)) for w in w2i.keys()])
+        V_init = np.array([gle_model[w] if (w in vocab) else rng.normal(size=(EMB_DIM)) for w in w2i.keys()])
 
         import gc
         del gle_model
@@ -100,7 +109,7 @@ def main():
     trainer = dy.AdamTrainer(model)
 
     layers = [
-        CNN(model, vocab_size, emb_dim, NUM_FIL, dy.tanh, DROPOUT_PROB, V_init=V_init, V_update=V_UPDATE),
+        CNN(model, vocab_size, EMB_DIM, NUM_FIL, dy.tanh, DROPOUT_PROB, V_init=V_init, V_update=V_UPDATE),
         Dense(model, NUM_FIL*3, OUT_DIM, dy.logistic),
     ]
 
