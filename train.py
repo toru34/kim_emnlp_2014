@@ -4,7 +4,6 @@ import time
 import argparse
 
 import gensim
-import _dynet as dy
 import numpy as np
 from sklearn.utils import shuffle
 from sklearn.metrics import f1_score, accuracy_score
