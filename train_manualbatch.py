@@ -28,7 +28,7 @@ def main():
     parser.add_argument('--dropout_prob', type=float, default=0.5, help='Dropout probability [default: 0.5]')
     parser.add_argument('--embedding_strategy', type=str, default='rand', help='Embedding strategy. rand: Random  initialization. static: Load pretrained embeddings and do not update during the training. non-static: Load pretrained embeddings and update during the training.')
     parser.add_argument('--emb_dim', type=int, default=300, help='Embedding size. (only applied to rand option) [default: 300]')
-    parser.add_argument('--alloc_mem', type=int, default=2048, help='Amount of memory to allocate [mb] [default: 2048]')
+    parser.add_argument('--alloc_mem', type=int, default=4096, help='Amount of memory to allocate [mb] [default: 4096]')
     args = parser.parse_args()
     print(args)
 
