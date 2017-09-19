@@ -6,6 +6,7 @@ DyNet implementation for the paper Convolutional Neural Networks for Sentence Cl
 - Python 3.6.0+
 - DyNet 2.0+
 - NumPy 1.12.1+
+- gensim 2.3.0+
 - scikit-learn 0.19.0+
 - tqdm 4.15.0+
 
