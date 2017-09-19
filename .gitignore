@@ -1,8 +1,14 @@
 # toru34
 *.ipynb
 .DS_Store
-test.py
-data/GoogleNews-vectors-negative300.bin
+data
+*.data
+*.meta
+*.swp
+*.dump
+tmp.py
+*.gz
+CNN_sentence
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
