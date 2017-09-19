@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 import numpy as np
-from keras.preprocessing import sequence
 
 def sort_data_by_length(data_X, data_y):
     data_X_lens = [len(com) for com in data_X]
@@ -10,19 +9,6 @@ def sort_data_by_length(data_X, data_y):
     data_X = [data_X[ind] for ind in sorted_data_indexes]
     data_y = [data_y[ind] for ind in sorted_data_indexes]
     return data_X, data_y
-
-# def make_mb(mb, padid, batch_size):
-#     mb = sequence.pad_sequences(mb, padding='post', value=padid)
-#     pad = np.zeros((batch_size, 4))
-#     mb = np.c_[pad, mb]
-#     mb = np.c_[mb, pad]
-#     return mb
-
-def binary_pred(x):
-    if x > 0.5:
-        return 1
-    else:
-        return 0
 
 def binary_pred(x):
     return np.piecewise(x, [x < 0.5, x >= 0.5], [0, 1])
