@@ -6,7 +6,6 @@ import argparse
 
 import gensim
 import numpy as np
-import _dynet as dy
 from tqdm import tqdm
 from sklearn.utils import shuffle
 from sklearn.metrics import f1_score, accuracy_score
