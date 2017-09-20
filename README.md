@@ -30,7 +30,7 @@ sh data_download.sh
     - `rand`: Random initialization.
     - `static`: Load pretrained embeddings and do not update during the training.
     - `non-static`: Load pretrained embeddings and update during the training.
-- `--emb_dim`: Word embedding size. (Only applied to rand option) [default: 300]
+- `--emb_dim`: Word embedding size. (Only applied to `rand` option) [default: 300]
 - `--alloc_mem`: Amount of memory to allocate [mb] [default: 4096]
 
 #### Command example
