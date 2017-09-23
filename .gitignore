@@ -12,6 +12,7 @@ train_manualbatch.py
 rt-polaritydata
 *.bin
 _*
+*.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
