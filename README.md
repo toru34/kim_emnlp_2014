@@ -23,21 +23,22 @@ sh data_download.sh
 - `--gpu`: GPU ID to use. For cpu, set -1 [default: -1]
 - `--n_epochs`: Number of epochs [default: 25]
 - `--batch_size`: Mini batch size [default: 32]
-- `--num_filters`: Number of filters in each window size [default: 100]
-- `--vocab_size`: Vocabulary size [default: 10000]
+- `--win_sizes`: Window sizes of filters [default: [2, 3, 4]]
+- `--num_fil`: Number of filters in each window size [default: 100]
+- `--vocab_size`: Vocabulary size [default: 60000]
 - `--dropout_prob`: Dropout probability [default: 0.5]
-- `--embedding_strategy`: Embeding strategy. [default: rand]
+- `--v_strategy`: Embeding strategy. [default: rand]
     - `rand`: Random initialization.
     - `static`: Load pretrained embeddings and do not update during the training.
     - `non-static`: Load pretrained embeddings and update during the training.
+    - `multichannel`: Load pretrained embeddings as two channels and update one of them during the training and do not update the other one during the training.
 - `--emb_dim`: Word embedding size. (Only applied to `rand` option) [default: 300]
 - `--alloc_mem`: Amount of memory to allocate [mb] [default: 4096]
 
 #### Command example
 ```
-python train_manualbatch.py --num_epochs 20
+python train_autobatch.py --num_epochs 20
 ```
-Replace `train_manualbatch.py` with `train_autobatch.py` to use autobatching.
 
 ### 4. Test
 #### Arguments

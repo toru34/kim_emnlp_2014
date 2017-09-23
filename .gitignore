@@ -8,7 +8,7 @@ data
 *.dump
 tmp.py
 *.gz
-CNN_sentence
+train_manualbatch.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

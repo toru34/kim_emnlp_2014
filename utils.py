@@ -2,6 +2,10 @@ from collections import defaultdict
 
 import numpy as np
 
+def init_V(w2v, w2i, rng):
+    size = w2v['the'].shape
+    return np.array([w2v[w] if w in w2v else rng.normal(size=size) for w in w2i.keys()])
+
 def sort_data_by_length(data_X, data_y):
     data_X_lens = [len(com) for com in data_X]
     sorted_data_indexes = sorted(range(len(data_X_lens)), key=lambda x: -data_X_lens[x])

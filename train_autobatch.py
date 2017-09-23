@@ -6,12 +6,14 @@ import argparse
 
 import gensim
 import numpy as np
+import _dynet as dy
 from tqdm import tqdm
 from sklearn.utils import shuffle
 from sklearn.metrics import f1_score, accuracy_score
 from sklearn.model_selection import train_test_split
 
-from utils import associate_parameters, binary_pred, build_word2count, build_dataset, sort_data_by_length, f_props
+from utils import associate_parameters, binary_pred, build_word2count, build_dataset, sort_data_by_length, f_props, init_V
+from layers import CNNText, Dense
 
 RANDOM_STATE = 34
 rng = np.random.RandomState(RANDOM_STATE)
@@ -22,10 +24,11 @@ def main():
     parser.add_argument('--gpu', type=int, default=-1, help='GPU ID to use. For cpu, set -1 [default: -1]')
     parser.add_argument('--n_epochs', type=int, default=25, help='Number of epochs [default: 25]')
     parser.add_argument('--batch_size', type=int, default=50, help='Mini batch size [default: 32]')
-    parser.add_argument('--num_filters', type=int, default=100, help='Number of filters in each window size [default: 100]')
-    parser.add_argument('--vocab_size', type=int, default=10000, help='Vocabulary size [default: 10000]')
+    parser.add_argument('--win_sizes', type=list, default=[2,3,4], help='Window sizes of filters [default: [2, 3, 4]]')
+    parser.add_argument('--num_fil', type=int, default=100, help='Number of filters in each window size [default: 100]')
+    parser.add_argument('--vocab_size', type=int, default=60000, help='Vocabulary size [default: 60000]')
     parser.add_argument('--dropout_prob', type=float, default=0.5, help='Dropout probability [default: 0.5]')
-    parser.add_argument('--embedding_strategy', type=str, default='rand', help='Embedding strategy. rand: Random  initialization. static: Load pretrained embeddings and do not update during the training. non-static: Load pretrained embeddings and update during the training.')
+    parser.add_argument('--v_strategy', type=str, default='rand', help='Embedding strategy. rand: Random  initialization. static: Load pretrained embeddings and do not update during the training. non-static: Load pretrained embeddings and update during the training.')
     parser.add_argument('--emb_dim', type=int, default=300, help='Embedding size. (only applied to rand option) [default: 300]')
     parser.add_argument('--alloc_mem', type=int, default=4096, help='Amount of memory to allocate [mb] [default: 4096]')
     args = parser.parse_args()
@@ -33,22 +36,24 @@ def main():
 
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 
-    if args.gpu < 0:
-        import _dynet as dy  # Use cpu
-    else:
-        import _gdynet as dy # Use gpu
-
-    from layers import CNNText, Dense
-
     vocab_size = args.vocab_size
     N_EPOCHS = args.n_epochs
     BATCH_SIZE = args.batch_size
+    WIN_SIZES = args.win_sizes
     EMB_DIM = args.emb_dim
     OUT_DIM = 1
-    NUM_FIL = args.num_filters
+    NUM_FIL = args.num_fil
     DROPOUT_PROB = args.dropout_prob
-    V_STRATEGY = args.embedding_strategy
+    V_STRATEGY = args.v_strategy
     ALLOC_MEM = args.alloc_mem
+    if V_STRATEGY is 'multichannel':
+        MULTICHANNEL = True
+    else:
+        MULTICHANNEL = False
+
+    W2V_FILE = './data/GoogleNews-vectors-negative300.bin'
+    DATA_FILE1 = './data/rt-polaritydata/rt-polarity.neg'
+    DATA_FILE2 = './data/rt-polaritydata/rt-polarity.pos'
 
     # DyNet setting
     dyparams = dy.DynetParams()
@@ -57,50 +62,30 @@ def main():
     dyparams.set_mem(ALLOC_MEM)
     dyparams.init()
 
-    # Build dataset =============================================================================================
-    if V_STRATEGY == 'rand':
-        V_UPDATE = True
-        w2c = build_word2count('./data/rt-polaritydata/rt-polarity.neg')
-        w2c = build_word2count('./data/rt-polaritydata/rt-polarity.pos', w2c=w2c)
-        data_neg, w2i, i2w = build_dataset('./data/rt-polaritydata/rt-polarity.neg', vocab_size=vocab_size, w2c=w2c, padid=True)
-        data_pos, _, _ = build_dataset('./data/rt-polaritydata/rt-polarity.pos', w2i=w2i)
+    w2c = build_word2count(DATA_FILE1)
+    w2c = build_word2count(DATA_FILE2, w2c=w2c)
 
-        V_init = None
-    elif V_STRATEGY == 'static':
-        V_UPDATE = False
-        EMB_DIM = 300
-        pretrained_model = gensim.models.KeyedVectors.load_word2vec_format('./data/GoogleNews-vectors-negative300.bin', binary=True)
-        vocab = pretrained_model.wv.vocab.keys()
+    data_neg, w2i, i2w = build_dataset(DATA_FILE1, vocab_size=vocab_size, w2c=w2c, padid=True, unksym='unk')
+    data_pos, _, _ = build_dataset(DATA_FILE2, w2i=w2i, unksym='unk')
 
-        w2c = build_word2count('./data/rt-polaritydata/rt-polarity.neg', vocab=vocab)
-        w2c = build_word2count('./data/rt-polaritydata/rt-polarity.pos', w2c=w2c, vocab=vocab)
-        data_neg, w2i, i2w = build_dataset('./data/rt-polaritydata/rt-polarity.neg', vocab_size=vocab_size, w2c=w2c, padid=True, unksym='unk')
-        data_pos, _, _ = build_dataset('./data/rt-polaritydata/rt-polarity.pos', w2i=w2i, unksym='unk')
-
-        V_init = np.array([np.zeros(EMB_DIM) if w == '<pad>' else pretrained_model[w] for w in w2i.keys()])
-
-        import gc
-        del pretrained_model
-        gc.collect()
-    elif V_STRATEGY == 'non-static':
-        V_UPDATE = True
-        EMB_DIM = 300
-        pretrained_model = gensim.models.KeyedVectors.load_word2vec_format('./data/GoogleNews-vectors-negative300.bin', binary=True)
-        vocab = pretrained_model.wv.vocab.keys()
-
-        w2c = build_word2count('./data/rt-polaritydata/rt-polarity.neg')
-        w2c = build_word2count('./data/rt-polaritydata/rt-polarity.pos', w2c=w2c)
-        data_neg, w2i, i2w = build_dataset('./data/rt-polaritydata/rt-polarity.neg', vocab_size=vocab_size, w2c=w2c, padid=True, unksym='unk')
-        data_pos, _, _ = build_dataset('./data/rt-polaritydata/rt-polarity.pos', w2i=w2i, unksym='unk')
-
-        V_init = np.array([pretrained_model[w] if (w in vocab) else rng.normal(size=(EMB_DIM)) for w in w2i.keys()])
-        V_init[w2i['<pad>']] = np.zeros(EMB_DIM)
-
-        import gc
-        del pretrained_model
-        gc.collect()
+    with open('./w2i.dump', 'wb') as f_w2i, open('./i2w.dump', 'wb') as f_i2w:
+        pickle.dump(w2i, f_w2i)
+        pickle.dump(i2w, f_i2w)
 
     vocab_size = len(w2i)
+
+    if V_STRATEGY == 'rand':
+        V_init = rng.normal(size=(vocab_size, EMB_DIM))
+    else:
+        EMB_DIM = 300
+        pretrained_model = gensim.models.KeyedVectors.load_word2vec_format(W2V_FILE, binary=True)
+        w2v = pretrained_model.wv
+        V_init = init_V(w2v, w2i, rng)
+        V_init[w2i['<pad>']] = 0
+
+        import gc
+        del pretrained_model
+        gc.collect()
 
     data_X = data_neg + data_pos
     data_X = [[0,0,0,0] + instance_x + [0,0,0,0] for instance_x in data_X]
@@ -115,14 +100,18 @@ def main():
     model = dy.Model()
     trainer = dy.AdamTrainer(model)
 
-    V = model.add_lookup_parameters((vocab_size, EMB_DIM))
-    if V_init is not None:
-        V.init_from_array(V_init)
-    else:
-        V.init_row(w2i['<pad>'], np.zeros(EMB_DIM))
+    Vs = []
+    if V_STRATEGY in ['static', 'multichannel']:
+        V_sta = model.add_lookup_parameters((vocab_size, EMB_DIM))
+        V_sta.init_from_array(V_init)
+        Vs.append(V_sta)
+    if V_STRATEGY in ['rand', 'non-static', 'multichannel']:
+        V_non = model.add_lookup_parameters((vocab_size, EMB_DIM))
+        V_non.init_from_array(V_init)
+        Vs.append(V_non)
 
     layers = [
-        CNNText(model, EMB_DIM, NUM_FIL, dy.rectify, DROPOUT_PROB),
+        CNNText(model, EMB_DIM, WIN_SIZES, NUM_FIL, dy.rectify, DROPOUT_PROB, multichannel=MULTICHANNEL),
         Dense(model, 3*NUM_FIL, OUT_DIM, dy.logistic)
     ]
 
@@ -149,10 +138,17 @@ def main():
             losses = []
             preds = []
             for instance_x, instance_y in zip(train_X_mb, train_y_mb):
-                x_embs = [dy.lookup(V, x_t, V_UPDATE) for x_t in instance_x]
+                x_embss = []
+                if V_STRATEGY in ['static', 'multichannel']:
+                    x_embss.append([dy.lookup(V_sta, x_t, update=False) for x_t in instance_x])
+                if V_STRATEGY in ['rand', 'non-static', 'multichannel']:
+                    x_embss.append([dy.lookup(V_non, x_t, update=True) for x_t in instance_x])
 
                 t = dy.scalarInput(instance_y)
-                y = f_props(layers, x_embs, train=True)
+                if MULTICHANNEL:
+                    y = f_props(layers, x_embss, train=True)
+                else:
+                    y = f_props(layers, x_embss[0], train=True)
 
                 loss = dy.binary_log_loss(y, t)
                 losses.append(loss)
@@ -185,10 +181,17 @@ def main():
             losses = []
             preds = []
             for instance_x, instance_y in zip(valid_X_mb, valid_y_mb):
-                x_embs = [dy.lookup(V, x_t) for x_t in instance_x]
+                x_embss = []
+                if V_STRATEGY in ['static', 'multichannel']:
+                    x_embss.append([dy.lookup(V_sta, x_t, update=False) for x_t in instance_x])
+                if V_STRATEGY in ['rand', 'non-static', 'multichannel']:
+                    x_embss.append([dy.lookup(V_non, x_t, update=True) for x_t in instance_x])
 
                 t = dy.scalarInput(instance_y)
-                y = f_props(layers, x_embs, train=True)
+                if MULTICHANNEL:
+                    y = f_props(layers, x_embss, train=True)
+                else:
+                    y = f_props(layers, x_embss[0], train=True)
 
                 loss = dy.binary_log_loss(y, t)
                 losses.append(loss)
@@ -211,11 +214,8 @@ def main():
             time.time()-start_time,
         ))
 
-    # Save model ==========================================================================================
-    dy.save('./model', [V] + layers)
-    with open('./w2i.dump', 'wb') as f_w2i, open('./i2w.dump', 'wb') as f_i2w:
-        pickle.dump(w2i, f_w2i)
-        pickle.dump(i2w, f_i2w)
+        # Save model ==========================================================================================
+        dy.save('./model_epoch'+str(epoch), Vs + layers)
 
 if __name__ == '__main__':
     main()

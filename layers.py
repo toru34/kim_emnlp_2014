@@ -1,57 +1,54 @@
-import os
-if int(os.environ['CUDA_VISIBLE_DEVICES']) < 0:
-    import _dynet as dy  # Use cpu
-else:
-    import _gdynet as dy # Use gpu
+import _dynet as dy
 
 class CNNText:
-    def __init__(self, model, emb_dim, num_fil, function, dropout_prob=0.5):
+    def __init__(self, model, emb_dim, win_sizes, num_fil, function, dropout_prob=0.5, multichannel=False):
         pc = model.add_subcollection()
 
+        if multichannel:
+            in_fil = 2
+        else:
+            in_fil = 1
+
         # CNN
-        self._W_w3 = pc.add_parameters((3, emb_dim, 1, num_fil))
-        self._W_w4 = pc.add_parameters((4, emb_dim, 1, num_fil))
-        self._W_w5 = pc.add_parameters((5, emb_dim, 1, num_fil))
-        self._b_w3 = pc.add_parameters((num_fil))
-        self._b_w4 = pc.add_parameters((num_fil))
-        self._b_w5 = pc.add_parameters((num_fil))
+        self._Ws = [pc.add_parameters((win_size, emb_dim, in_fil, num_fil)) for win_size in win_sizes]
+        self._bs = [pc.add_parameters((num_fil)) for _ in win_sizes]
         self.function = function
         self.dropout_prob = dropout_prob
 
         self.emb_dim = emb_dim
         self.num_fil = num_fil
+        self.win_sizes = win_sizes
+        self.multichannel = multichannel
 
         self.pc = pc
-        self.spec = (emb_dim, num_fil, function, dropout_prob)
+        self.spec = (emb_dim, win_sizes, num_fil, function, dropout_prob, multichannel)
 
-    def __call__(self, word_embs, train):
-        sen_len = len(word_embs)
+    def __call__(self, word_embs, train=True):
+        if self.multichannel:
+            sen_len = len(word_embs[0])
 
-        word_embs = dy.concatenate(word_embs, d=1)
-        word_embs = dy.transpose(word_embs)
-        word_embs = dy.reshape(word_embs, (sen_len, self.emb_dim, 1))
+            word_embs1 = dy.concatenate(word_embs[0], d=1)
+            word_embs2 = dy.concatenate(word_embs[1], d=1)
 
-        convd_w3 = dy.conv2d_bias(word_embs, self.W_w3, self.b_w3, stride=(1, 1))
-        convd_w4 = dy.conv2d_bias(word_embs, self.W_w4, self.b_w4, stride=(1, 1))
-        convd_w5 = dy.conv2d_bias(word_embs, self.W_w5, self.b_w5, stride=(1, 1))
+            word_embs1 = dy.transpose(word_embs1)
+            word_embs2 = dy.transpose(word_embs2)
 
-        actd_w3 = self.function(convd_w3)
-        actd_w4 = self.function(convd_w4)
-        actd_w5 = self.function(convd_w5)
+            word_embs = dy.concatenate([word_embs1, word_embs2], d=2)
+        else:
+            sen_len = len(word_embs)
 
-        poold_w3 = dy.maxpooling2d(convd_w3, ksize=(sen_len-3+1, 1), stride=(sen_len-3+1, 1))
-        poold_w4 = dy.maxpooling2d(convd_w4, ksize=(sen_len-4+1, 1), stride=(sen_len-4+1, 1))
-        poold_w5 = dy.maxpooling2d(convd_w5, ksize=(sen_len-5+1, 1), stride=(sen_len-5+1, 1))
+            word_embs = dy.concatenate(word_embs, d=1)
+            word_embs = dy.transpose(word_embs)
+            word_embs = dy.reshape(word_embs, (sen_len, self.emb_dim, 1))
 
-        poold_w3 = dy.reshape(poold_w3, (self.num_fil,))
-        poold_w4 = dy.reshape(poold_w4, (self.num_fil,))
-        poold_w5 = dy.reshape(poold_w5, (self.num_fil,))
-
-        z = dy.concatenate([poold_w3, poold_w4, poold_w5])
+        convds = [dy.conv2d_bias(word_embs, W, b, stride=(1, 1)) for W, b in zip(self.Ws, self.bs)]
+        actds = [self.function(convd) for convd in convds]
+        poolds = [dy.maxpooling2d(actd, ksize=(sen_len-win_size+1, 1), stride=(sen_len-win_size+1, 1)) for win_size, actd in zip(self.win_sizes, actds)]
+        z = dy.concatenate([dy.reshape(poold, (self.num_fil,)) for poold in poolds])
 
         if train:
             # Apply dropout
-            p = dy.random_bernoulli(z.dim()[0], self.dropout_prob)
+            p = dy.random_bernoulli(len(self.win_sizes)*self.num_fil, self.dropout_prob)
             z = dy.cmult(z, p)
         else:
             z = z*self.dropout_prob
@@ -59,17 +56,13 @@ class CNNText:
         return z
 
     def associate_parameters(self):
-        self.W_w3 = dy.parameter(self._W_w3)
-        self.W_w4 = dy.parameter(self._W_w4)
-        self.W_w5 = dy.parameter(self._W_w5)
-        self.b_w3 = dy.parameter(self._b_w3)
-        self.b_w4 = dy.parameter(self._b_w4)
-        self.b_w5 = dy.parameter(self._b_w5)
+        self.Ws = [dy.parameter(_W) for _W in self._Ws]
+        self.bs = [dy.parameter(_b) for _b in self._bs]
 
     @staticmethod
     def from_spec(spec, model):
-        emb_dim, num_fil, function, dropout_prob = spec
-        return CNNText(model, emb_dim, num_fil, function, dropout_prob)
+        emb_dim, win_sizes, num_fil, function, dropout_prob, multichannel = spec
+        return CNNText(model, emb_dim, win_sizes, num_fil, function, dropout_prob, multichannel)
 
     def param_collection(self):
         return self.pc
