@@ -23,7 +23,7 @@ def main():
 
     parser.add_argument('--gpu', type=int, default=-1, help='GPU ID to use. For cpu, set -1 [default: -1]')
     parser.add_argument('--n_epochs', type=int, default=25, help='Number of epochs [default: 25]')
-    parser.add_argument('--batch_size', type=int, default=50, help='Mini batch size [default: 32]')
+    parser.add_argument('--batch_size', type=int, default=32, help='Mini batch size [default: 32]')
     parser.add_argument('--win_sizes', type=list, default=[2,3,4], help='Window sizes of filters [default: [2, 3, 4]]')
     parser.add_argument('--num_fil', type=int, default=100, help='Number of filters in each window size [default: 100]')
     parser.add_argument('--vocab_size', type=int, default=60000, help='Vocabulary size [default: 60000]')
