@@ -9,6 +9,9 @@ data
 tmp.py
 *.gz
 train_manualbatch.py
+rt-polaritydata
+*.bin
+_*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

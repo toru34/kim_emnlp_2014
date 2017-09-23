@@ -16,24 +16,26 @@ To get movie review data[2] and pretrained word embeddings[3], run
 ```
 sh data_download.sh
 ```
-.
+and
+```
+python preprocess.py
+```
 
 ### 3. Train
 #### Arguments
-- `--gpu`: GPU ID to use. For cpu, set -1 [default: -1]
-- `--n_epochs`: Number of epochs [default: 25]
-- `--batch_size`: Mini batch size [default: 32]
-- `--win_sizes`: Window sizes of filters [default: [2, 3, 4]]
-- `--num_fil`: Number of filters in each window size [default: 100]
-- `--vocab_size`: Vocabulary size [default: 60000]
-- `--dropout_prob`: Dropout probability [default: 0.5]
-- `--v_strategy`: Embeding strategy. [default: rand]
+- `--gpu`: GPU ID to use. For cpu, set `-1` [default: `-1`]
+- `--n_epochs`: Number of epochs [default: `25`]
+- `--batch_size`: Mini batch size [default: `32`]
+- `--win_sizes`: Window sizes of filters [default: `[2, 3, 4]`]
+- `--num_fil`: Number of filters in each window size [default: `100`]
+- `--vocab_size`: Vocabulary size [default: `60000`]
+- `--dropout_prob`: Dropout probability [default: `0.5`]
+- `--v_strategy`: Embeding strategy. [default: `non-static`]
     - `rand`: Random initialization.
     - `static`: Load pretrained embeddings and do not update during the training.
     - `non-static`: Load pretrained embeddings and update during the training.
-    - `multichannel`: Load pretrained embeddings as two channels and update one of them during the training and do not update the other one during the training.
-- `--emb_dim`: Word embedding size. (Only applied to `rand` option) [default: 300]
-- `--alloc_mem`: Amount of memory to allocate [mb] [default: 4096]
+    - `multichannel`: Load pretrained embeddings as two channels and update one of them during the training and do not update the other one.
+- `--alloc_mem`: Amount of memory to allocate [mb] [default: `4096`]
 
 #### Command example
 ```
@@ -42,13 +44,13 @@ python train_autobatch.py --num_epochs 20
 
 ### 4. Test
 #### Arguments
-- `--gpu`: GPU ID to use. For cpu, set -1 [default: -1]
-- `--model_file`: Model to use for prediction [default: ./model]
-- `--input_file`: Input file path [default: ./data/rt-polaritydata/rt-polarity.neg]
-- `--output_file`: Output file paht [default: ./pred.txt]
-- `--w2i_file`: Word2Index file path [default: ./w2i.dump]
-- `--i2w_file`: Index2Word file path [default: ./i2w.dump]
-- `--alloc_mem`: Amount of memory to allocate [mb] [default: 1024]
+- `--gpu`: GPU ID to use. For cpu, set `-1` [default: `-1`]
+- `--model_file`: Model to use for prediction [default: `./model`]
+- `--input_file`: Input file path [default: `./data/valid_x.txt`]
+- `--output_file`: Output file paht [default: `./pred_y.txt`]
+- `--w2i_file`: Word2Index file path [default: `./w2i.dump`]
+- `--i2w_file`: Index2Word file path [default: `./i2w.dump`]
+- `--alloc_mem`: Amount of memory to allocate [mb] [default: `1024`]
 
 #### Command example
 ```

@@ -48,10 +48,11 @@ class CNNText:
 
         if train:
             # Apply dropout
-            p = dy.random_bernoulli(len(self.win_sizes)*self.num_fil, self.dropout_prob)
-            z = dy.cmult(z, p)
-        else:
-            z = z*self.dropout_prob
+            z = dy.dropout(z, self.dropout_prob)
+            # p = dy.random_bernoulli(len(self.win_sizes)*self.num_fil, self.dropout_prob)
+            # z = dy.cmult(z, p)
+        # else:
+        #     z = z*self.dropout_prob
 
         return z
 
@@ -71,8 +72,8 @@ class Dense:
     def __init__(self, model, in_dim, out_dim, function=lambda x: x):
         pc = model.add_subcollection()
 
-        self._W = model.add_parameters((out_dim, in_dim))
-        self._b = model.add_parameters((out_dim))
+        self._W = pc.add_parameters((out_dim, in_dim))
+        self._b = pc.add_parameters((out_dim))
         self.function = function
 
         self.pc = pc

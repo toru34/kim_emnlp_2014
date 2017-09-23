@@ -8,9 +8,7 @@ import gensim
 import numpy as np
 import _dynet as dy
 from tqdm import tqdm
-from sklearn.utils import shuffle
 from sklearn.metrics import f1_score, accuracy_score
-from sklearn.model_selection import train_test_split
 
 from utils import associate_parameters, binary_pred, build_word2count, build_dataset, sort_data_by_length, f_props, init_V
 from layers import CNNText, Dense
@@ -29,7 +27,6 @@ def main():
     parser.add_argument('--vocab_size', type=int, default=60000, help='Vocabulary size [default: 60000]')
     parser.add_argument('--dropout_prob', type=float, default=0.5, help='Dropout probability [default: 0.5]')
     parser.add_argument('--v_strategy', type=str, default='rand', help='Embedding strategy. rand: Random  initialization. static: Load pretrained embeddings and do not update during the training. non-static: Load pretrained embeddings and update during the training.')
-    parser.add_argument('--emb_dim', type=int, default=300, help='Embedding size. (only applied to rand option) [default: 300]')
     parser.add_argument('--alloc_mem', type=int, default=4096, help='Amount of memory to allocate [mb] [default: 4096]')
     args = parser.parse_args()
     print(args)
@@ -40,7 +37,7 @@ def main():
     N_EPOCHS = args.n_epochs
     BATCH_SIZE = args.batch_size
     WIN_SIZES = args.win_sizes
-    EMB_DIM = args.emb_dim
+    EMB_DIM = 300
     OUT_DIM = 1
     NUM_FIL = args.num_fil
     DROPOUT_PROB = args.dropout_prob
@@ -51,9 +48,11 @@ def main():
     else:
         MULTICHANNEL = False
 
-    W2V_FILE = './data/GoogleNews-vectors-negative300.bin'
-    DATA_FILE1 = './data/rt-polaritydata/rt-polarity.neg'
-    DATA_FILE2 = './data/rt-polaritydata/rt-polarity.pos'
+    W2V_FILE = './GoogleNews-vectors-negative300.bin'
+    TRAIN_X_FILE = './data/train_x.txt'
+    TRAIN_Y_FILE = './data/train_y.txt'
+    VALID_X_FILE = './data/valid_x.txt'
+    VALID_Y_FILE = './data/valid_y.txt'
 
     # DyNet setting
     dyparams = dy.DynetParams()
@@ -62,53 +61,50 @@ def main():
     dyparams.set_mem(ALLOC_MEM)
     dyparams.init()
 
-    w2c = build_word2count(DATA_FILE1)
-    w2c = build_word2count(DATA_FILE2, w2c=w2c)
+    # Build dataset =======================================================================================
+    w2c = build_word2count(TRAIN_X_FILE)
 
-    data_neg, w2i, i2w = build_dataset(DATA_FILE1, vocab_size=vocab_size, w2c=w2c, padid=True, unksym='unk')
-    data_pos, _, _ = build_dataset(DATA_FILE2, w2i=w2i, unksym='unk')
+    train_X, w2i, i2w = build_dataset(TRAIN_X_FILE, vocab_size=vocab_size, w2c=w2c, padid=False, unksym='unk')
+    valid_X, _, _ = build_dataset(VALID_X_FILE, w2i=w2i, unksym='unk')
 
     with open('./w2i.dump', 'wb') as f_w2i, open('./i2w.dump', 'wb') as f_i2w:
         pickle.dump(w2i, f_w2i)
         pickle.dump(i2w, f_i2w)
 
+    train_X = [[0]*max(WIN_SIZES) + instance_x + [0]*max(WIN_SIZES) for instance_x in train_X]
+    valid_X = [[0]*max(WIN_SIZES) + instance_x + [0]*max(WIN_SIZES) for instance_x in valid_X]
+
+    with open(TRAIN_Y_FILE, 'r') as f_t, open(VALID_Y_FILE, 'r') as f_v:
+        train_y = np.array(f_t.read().split('\n')).astype('int32')
+        valid_y = np.array(f_v.read().split('\n')).astype('int32')
+
+    train_X, train_y = sort_data_by_length(train_X, train_y)
+    valid_X, valid_y = sort_data_by_length(valid_X, valid_y)
+
     vocab_size = len(w2i)
 
+    # Load pretrained embeddings ==========================================================================
     if V_STRATEGY == 'rand':
         V_init = rng.normal(size=(vocab_size, EMB_DIM))
     else:
-        EMB_DIM = 300
         pretrained_model = gensim.models.KeyedVectors.load_word2vec_format(W2V_FILE, binary=True)
         w2v = pretrained_model.wv
         V_init = init_V(w2v, w2i, rng)
-        V_init[w2i['<pad>']] = 0
 
         import gc
         del pretrained_model
         gc.collect()
 
-    data_X = data_neg + data_pos
-    data_X = [[0,0,0,0] + instance_x + [0,0,0,0] for instance_x in data_X]
-    data_y = [0 for i in range(len(data_neg))] + [1 for i in range(len(data_pos))]
-    data_X, data_y = shuffle(data_X, data_y, random_state=RANDOM_STATE)
-
-    train_X, valid_X, train_y, valid_y = train_test_split(data_X, data_y, test_size=0.1, random_state=RANDOM_STATE)
-    train_X, train_y = sort_data_by_length(train_X, train_y)
-    valid_X, valid_y = sort_data_by_length(valid_X, valid_y)
-
-    # Build model
+    # Build model =========================================================================================
     model = dy.Model()
     trainer = dy.AdamTrainer(model)
 
-    Vs = []
     if V_STRATEGY in ['static', 'multichannel']:
         V_sta = model.add_lookup_parameters((vocab_size, EMB_DIM))
         V_sta.init_from_array(V_init)
-        Vs.append(V_sta)
     if V_STRATEGY in ['rand', 'non-static', 'multichannel']:
         V_non = model.add_lookup_parameters((vocab_size, EMB_DIM))
         V_non.init_from_array(V_init)
-        Vs.append(V_non)
 
     layers = [
         CNNText(model, EMB_DIM, WIN_SIZES, NUM_FIL, dy.rectify, DROPOUT_PROB, multichannel=MULTICHANNEL),
@@ -215,6 +211,11 @@ def main():
         ))
 
         # Save model ==========================================================================================
+        Vs = []
+        if V_STRATEGY in ['static', 'multichannel']:
+            Vs.append(V_sta)
+        if V_STRATEGY in ['rand', 'non-static', 'multichannel']:
+            Vs.append(V_non)
         dy.save('./model_epoch'+str(epoch), Vs + layers)
 
 if __name__ == '__main__':
