@@ -25,7 +25,7 @@ def main():
     parser.add_argument('--batch_size', type=int, default=64, help='Mini batch size [default: 64]')
     parser.add_argument('--win_sizes', type=int, nargs='*', default=[3, 4, 5], help='Window sizes of filters [default: [3, 4, 5]]')
     parser.add_argument('--num_fil', type=int, default=100, help='Number of filters in each window size [default: 100]')
-    parser.add_argument('--s', type=float, default=3, help='L2 norm constraint on w [default: 3.0]')
+    parser.add_argument('--s', type=float, default=3.0, help='L2 norm constraint on w [default: 3.0]')
     parser.add_argument('--dropout_prob', type=float, default=0.5, help='Dropout probability [default: 0.5]')
     parser.add_argument('--v_strategy', type=str, default='static', help='Embedding strategy. rand: Random  initialization. static: Load pretrained embeddings and do not update during the training. non-static: Load pretrained embeddings and update during the training. [default: static]')
     parser.add_argument('--alloc_mem', type=int, default=4096, help='Amount of memory to allocate [mb] [default: 4096]')
