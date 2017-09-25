@@ -27,7 +27,7 @@ python preprocess.py
 - `--batch_size`: Mini batch size [default: `32`]
 - `--win_sizes`: Window sizes of filters [default: `[2, 3, 4]`]
 - `--num_fil`: Number of filters in each window size [default: `100`]
-- `--vocab_size`: Vocabulary size [default: `60000`]
+- `--s`: L2 norm constraint on w [default: `3.0`]
 - `--dropout_prob`: Dropout probability [default: `0.5`]
 - `--v_strategy`: Embeding strategy. [default: `non-static`]
     - `rand`: Random initialization.
