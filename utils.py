@@ -3,8 +3,11 @@ from collections import defaultdict
 import numpy as np
 
 def init_V(w2v, w2i, rng):
-    size = w2v['the'].shape
-    return np.array([w2v[w] if w in w2v else rng.normal(size=size) for w in w2i.keys()])
+    V_init = rng.normal(size=(len(w2i), w2v.vector_size))
+    for w, i in w2i.items():
+        if w in w2v:
+            V_init[w2i[w]] = w2v[w]
+    return V_init
 
 def sort_data_by_length(data_X, data_y):
     data_X_lens = [len(com) for com in data_X]
@@ -50,7 +53,7 @@ def encode(sentence, w2i, unksym='<unk>'):
             encoded_sentence.append(w2i[unksym])
     return encoded_sentence
 
-def build_dataset(file_path, vocab_size=10000, w2c=None, w2i=None, target=False, eos=False, padid=False, unksym='<unk>', min_len=1, max_len=100):
+def build_dataset(file_path, vocab_size=999999, w2c=None, w2i=None, target=False, eos=False, padid=False, unksym='<unk>', min_len=1, max_len=100):
     if w2i is None:
         sorted_w2c = sorted(w2c.items(), key=lambda x: -x[1])
         sorted_w = [w for w, c in sorted_w2c]

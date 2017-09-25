@@ -33,46 +33,53 @@ def main():
     dyparams.set_mem(ALLOC_MEM)
     dyparams.init()
 
-    # Load model ===============================================================================================================
+    # Load model
     model = dy.Model()
-    Vs_layers = dy.load(MODEL_FILE, model)
-    layers = Vs_layers[-2:]
-    MULTICHANNEL = layers[0].multichannel
-    if MULTICHANNEL:
-        V1, V2 = Vs_layers[0], Vs_layers[1]
+    pretrained_model = dy.load(MODEL_FILE, model)
+    if len(pretrained_model) == 3:
+        V1, layers = pretrained_model[0], pretrained_model[1:]
+        MULTICHANNEL = False
     else:
-        V = Vs_layers[0]
+        V1, V2, layers = pretrained_model[0], pretrained_model[1], pretrained_model[2:]
+        MULTICHANNEL = True
+
+    EMB_DIM = V1.shape()[0]
     WIN_SIZES = layers[0].win_sizes
 
-    # Load test data ===========================================================================================================
+    # Load test data
     with open(W2I_FILE, 'rb') as f_w2i, open(I2W_FILE, 'rb') as f_i2w:
         w2i = pickle.load(f_w2i)
         i2w = pickle.load(f_i2w)
 
+    max_win = max(WIN_SIZES)
     test_X, _, _ = build_dataset(INPUT_FILE, w2i=w2i, unksym='unk')
+    test_X = [[0]*max_win + instance_x + [0]*max_win for instance_x in test_X]
 
-    test_X = [[0]*max(WIN_SIZES) + instance_x + [0]*max(WIN_SIZES) for instance_x in test_X]
-
-    # Pred =====================================================================================================================
-    pred_y_txt = ''
-    # for instance_x in tqdm(test_X):
-    for instance_x in test_X:
+    # Pred
+    pred_y = []
+    for instance_x in tqdm(test_X):
+        # Create a new computation graph
         dy.renew_cg()
         associate_parameters(layers)
 
-        if MULTICHANNEL:
-            x_embs1 = [dy.lookup(V1, x_t) for x_t in instance_x]
-            x_embs2 = [dy.lookup(V2, x_t) for x_t in instance_x]
-            y = f_props(layers, [x_embs1, x_embs2], train=False)
-        else:
-            x_embs = [dy.lookup(V, x_t) for x_t in instance_x]
-            y = f_props(layers, x_embs, train=False)
+        sen_len = len(instance_x)
 
-        pred_y_txt += str(int(binary_pred(y.value()))) + '\n'
-        print(y.value())
+        if MULTICHANNEL:
+            x_embs1 = dy.concatenate([dy.lookup(V1, x_t, update=False) for x_t in instance_x], d=1)
+            x_embs2 = dy.concatenate([dy.lookup(V2, x_t, update=False) for x_t in instance_x], d=1)
+            x_embs1 = dy.transpose(x_embs1)
+            x_embs2 = dy.transpose(x_embs2)
+            x_embs = dy.concatenate([x_embs1, x_embs2], d=2)
+        else:
+            x_embs = dy.concatenate([dy.lookup(V1, x_t, update=False) for x_t in instance_x], d=1)
+            x_embs = dy.transpose(x_embs)
+            x_embs = dy.reshape(x_embs, (sen_len, EMB_DIM, 1))
+
+        y = f_props(layers, x_embs, train=False)
+        pred_y.append(str(int(binary_pred(y.value()))))
 
     with open(OUTPUT_FILE, 'w') as f:
-        f.write(pred_y_txt)
+        f.write('\n'.join(pred_y))
 
 if __name__ == '__main__':
     main()

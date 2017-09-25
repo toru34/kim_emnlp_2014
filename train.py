@@ -11,7 +11,7 @@ from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score
 
 from utils import associate_parameters, binary_pred, build_word2count, build_dataset, sort_data_by_length, f_props, init_V
-from layers import CNNText, Dense
+from layers import Dense, CNNText
 
 RANDOM_STATE = 34
 rng = np.random.RandomState(RANDOM_STATE)
@@ -24,30 +24,29 @@ def main():
     parser.add_argument('--batch_size', type=int, default=32, help='Mini batch size [default: 32]')
     parser.add_argument('--win_sizes', type=list, default=[2,3,4], help='Window sizes of filters [default: [2, 3, 4]]')
     parser.add_argument('--num_fil', type=int, default=100, help='Number of filters in each window size [default: 100]')
-    parser.add_argument('--vocab_size', type=int, default=60000, help='Vocabulary size [default: 60000]')
     parser.add_argument('--dropout_prob', type=float, default=0.5, help='Dropout probability [default: 0.5]')
-    parser.add_argument('--v_strategy', type=str, default='rand', help='Embedding strategy. rand: Random  initialization. static: Load pretrained embeddings and do not update during the training. non-static: Load pretrained embeddings and update during the training.')
+    parser.add_argument('--v_strategy', type=str, default='rand', help='Embedding strategy. rand: Random  initialization. static: Load pretrained embeddings and do not update during the training. non-static: Load pretrained embeddings and update during the training. [default: static]')
     parser.add_argument('--alloc_mem', type=int, default=4096, help='Amount of memory to allocate [mb] [default: 4096]')
     args = parser.parse_args()
     print(args)
 
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 
-    vocab_size = args.vocab_size
     N_EPOCHS = args.n_epochs
-    BATCH_SIZE = args.batch_size
     WIN_SIZES = args.win_sizes
+    BATCH_SIZE = args.batch_size
     EMB_DIM = 300
     OUT_DIM = 1
     NUM_FIL = args.num_fil
     DROPOUT_PROB = args.dropout_prob
     V_STRATEGY = args.v_strategy
     ALLOC_MEM = args.alloc_mem
-    if V_STRATEGY is 'multichannel':
-        MULTICHANNEL = True
+    if V_STRATEGY in ['rand', 'static', 'non-static']:
+        NUM_CHA = 1
     else:
-        MULTICHANNEL = False
+        NUM_CHA = 2
 
+    # FILE paths
     W2V_FILE = './GoogleNews-vectors-negative300.bin'
     TRAIN_X_FILE = './data/train_x.txt'
     TRAIN_Y_FILE = './data/train_y.txt'
@@ -61,53 +60,54 @@ def main():
     dyparams.set_mem(ALLOC_MEM)
     dyparams.init()
 
-    # Build dataset =======================================================================================
-    w2c = build_word2count(TRAIN_X_FILE)
+    # Load pretrained embeddings
+    pretrained_model = gensim.models.KeyedVectors.load_word2vec_format(W2V_FILE, binary=True)
+    vocab = pretrained_model.wv.vocab.keys()
+    w2v = pretrained_model.wv
 
-    train_X, w2i, i2w = build_dataset(TRAIN_X_FILE, vocab_size=vocab_size, w2c=w2c, padid=False, unksym='unk')
+    # Build dataset
+    w2c = build_word2count(TRAIN_X_FILE, vocab=vocab)
+    train_X, w2i, i2w = build_dataset(TRAIN_X_FILE, w2c=w2c, padid=False, unksym='unk')
+    train_y = np.loadtxt(TRAIN_Y_FILE)
     valid_X, _, _ = build_dataset(VALID_X_FILE, w2i=w2i, unksym='unk')
+    valid_y = np.loadtxt(VALID_Y_FILE)
 
-    with open('./w2i.dump', 'wb') as f_w2i, open('./i2w.dump', 'wb') as f_i2w:
-        pickle.dump(w2i, f_w2i)
-        pickle.dump(i2w, f_i2w)
-
+    max_win = max(WIN_SIZES)
     train_X = [[0]*max(WIN_SIZES) + instance_x + [0]*max(WIN_SIZES) for instance_x in train_X]
     valid_X = [[0]*max(WIN_SIZES) + instance_x + [0]*max(WIN_SIZES) for instance_x in valid_X]
-
-    with open(TRAIN_Y_FILE, 'r') as f_t, open(VALID_Y_FILE, 'r') as f_v:
-        train_y = np.array(f_t.read().split('\n')).astype('int32')
-        valid_y = np.array(f_v.read().split('\n')).astype('int32')
 
     train_X, train_y = sort_data_by_length(train_X, train_y)
     valid_X, valid_y = sort_data_by_length(valid_X, valid_y)
 
     vocab_size = len(w2i)
 
-    # Load pretrained embeddings ==========================================================================
-    if V_STRATEGY == 'rand':
-        V_init = rng.normal(size=(vocab_size, EMB_DIM))
-    else:
-        pretrained_model = gensim.models.KeyedVectors.load_word2vec_format(W2V_FILE, binary=True)
-        w2v = pretrained_model.wv
-        V_init = init_V(w2v, w2i, rng)
+    V_init = init_V(w2v, w2i, rng)
 
-        import gc
-        del pretrained_model
-        gc.collect()
+    with open('./w2i.dump', 'wb') as f_w2i, open('./i2w.dump', 'wb') as f_i2w:
+        pickle.dump(w2i, f_w2i)
+        pickle.dump(i2w, f_i2w)
 
-    # Build model =========================================================================================
+    # Build model
     model = dy.Model()
     trainer = dy.AdamTrainer(model)
 
+    # V1
+    V1 = model.add_lookup_parameters((vocab_size, EMB_DIM))
+    if V_STRATEGY in ['static', 'non-static', 'multichannel']:
+        V1.init_from_array(V_init)
     if V_STRATEGY in ['static', 'multichannel']:
-        V_sta = model.add_lookup_parameters((vocab_size, EMB_DIM))
-        V_sta.init_from_array(V_init)
-    if V_STRATEGY in ['rand', 'non-static', 'multichannel']:
-        V_non = model.add_lookup_parameters((vocab_size, EMB_DIM))
-        V_non.init_from_array(V_init)
+        V1_UPDATE = False
+    else: # 'rand', 'non-static'
+        V1_UPDATE = True
+
+    # V2
+    if V_STRATEGY == 'multichannel':
+        V2 = model.add_lookup_parameters((vocab_size, EMB_DIM))
+        V2.init_from_array(V_init)
+        V2_UPDATE = True
 
     layers = [
-        CNNText(model, EMB_DIM, WIN_SIZES, NUM_FIL, dy.rectify, DROPOUT_PROB, multichannel=MULTICHANNEL),
+        CNNText(model, EMB_DIM, WIN_SIZES, NUM_CHA, NUM_FIL, dy.tanh, DROPOUT_PROB),
         Dense(model, 3*NUM_FIL, OUT_DIM, dy.logistic)
     ]
 
@@ -134,17 +134,21 @@ def main():
             losses = []
             preds = []
             for instance_x, instance_y in zip(train_X_mb, train_y_mb):
-                x_embss = []
-                if V_STRATEGY in ['static', 'multichannel']:
-                    x_embss.append([dy.lookup(V_sta, x_t, update=False) for x_t in instance_x])
-                if V_STRATEGY in ['rand', 'non-static', 'multichannel']:
-                    x_embss.append([dy.lookup(V_non, x_t, update=True) for x_t in instance_x])
+                sen_len = len(instance_x)
+
+                if V_STRATEGY in ['rand', 'static', 'non-static']:
+                    x_embs = dy.concatenate([dy.lookup(V1, x_t, update=V1_UPDATE) for x_t in instance_x], d=1)
+                    x_embs = dy.transpose(x_embs)
+                    x_embs = dy.reshape(x_embs, (sen_len, EMB_DIM, 1))
+                else: # 'multichannel'
+                    x_embs1 = dy.concatenate([dy.lookup(V1, x_t, update=V2_UPDATE) for x_t in instance_x], d=1)
+                    x_embs2 = dy.concatenate([dy.lookup(V2, x_t, update=V2_UPDATE) for x_t in instance_x], d=1)
+                    x_embs1 = dy.transpose(x_embs1)
+                    x_embs2 = dy.transpose(x_embs2)
+                    x_embs = dy.concatenate([x_embs1, x_embs2], d=2)
 
                 t = dy.scalarInput(instance_y)
-                if MULTICHANNEL:
-                    y = f_props(layers, x_embss, train=True)
-                else:
-                    y = f_props(layers, x_embss[0], train=True)
+                y = f_props(layers, x_embs, train=True)
 
                 loss = dy.binary_log_loss(y, t)
                 losses.append(loss)
@@ -177,17 +181,21 @@ def main():
             losses = []
             preds = []
             for instance_x, instance_y in zip(valid_X_mb, valid_y_mb):
-                x_embss = []
-                if V_STRATEGY in ['static', 'multichannel']:
-                    x_embss.append([dy.lookup(V_sta, x_t, update=False) for x_t in instance_x])
-                if V_STRATEGY in ['rand', 'non-static', 'multichannel']:
-                    x_embss.append([dy.lookup(V_non, x_t, update=True) for x_t in instance_x])
+                sen_len = len(instance_x)
+
+                if V_STRATEGY in ['rand', 'static', 'non-static']:
+                    x_embs = dy.concatenate([dy.lookup(V1, x_t, update=False) for x_t in instance_x], d=1)
+                    x_embs = dy.transpose(x_embs)
+                    x_embs = dy.reshape(x_embs, (sen_len, EMB_DIM, 1))
+                else: # 'multichannel'
+                    x_embs1 = dy.concatenate([dy.lookup(V2, x_t, update=False) for x_t in instance_x], d=1)
+                    x_embs2 = dy.concatenate([dy.lookup(V2, x_t, update=False) for x_t in instance_x], d=1)
+                    x_embs1 = dy.transpose(x_embs1)
+                    x_embs2 = dy.transpose(x_embs2)
+                    x_embs = dy.concatenate([x_embs1, x_embs2], d=2)
 
                 t = dy.scalarInput(instance_y)
-                if MULTICHANNEL:
-                    y = f_props(layers, x_embss, train=True)
-                else:
-                    y = f_props(layers, x_embss[0], train=True)
+                y = f_props(layers, x_embs, train=False)
 
                 loss = dy.binary_log_loss(y, t)
                 losses.append(loss)
@@ -210,13 +218,11 @@ def main():
             time.time()-start_time,
         ))
 
-        # Save model ==========================================================================================
-        Vs = []
-        if V_STRATEGY in ['static', 'multichannel']:
-            Vs.append(V_sta)
-        if V_STRATEGY in ['rand', 'non-static', 'multichannel']:
-            Vs.append(V_non)
-        dy.save('./model_epoch'+str(epoch), Vs + layers)
+        # Save model
+        if V_STRATEGY in ['rand', 'static', 'non-static']:
+            dy.save('./model_epoch'+str(epoch+1), [V1] + layers)
+        else:
+            dy.save('./model_epoch'+str(epoch+1), [V1, V2] + layers)
 
 if __name__ == '__main__':
     main()
