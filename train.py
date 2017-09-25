@@ -8,9 +8,10 @@ import gensim
 import numpy as np
 import _dynet as dy
 from tqdm import tqdm
+from sklearn.utils import shuffle
 from sklearn.metrics import f1_score, accuracy_score
 
-from utils import associate_parameters, binary_pred, build_word2count, build_dataset, sort_data_by_length, f_props, init_V
+from utils import associate_parameters, binary_pred, build_word2count, build_dataset, f_props, init_V
 from layers import Dense, CNNText
 
 RANDOM_STATE = 34
@@ -21,8 +22,8 @@ def main():
 
     parser.add_argument('--gpu', type=int, default=-1, help='GPU ID to use. For cpu, set -1 [default: -1]')
     parser.add_argument('--n_epochs', type=int, default=25, help='Number of epochs [default: 25]')
-    parser.add_argument('--batch_size', type=int, default=32, help='Mini batch size [default: 32]')
-    parser.add_argument('--win_sizes', type=list, default=[2,3,4], help='Window sizes of filters [default: [2, 3, 4]]')
+    parser.add_argument('--batch_size', type=int, default=64, help='Mini batch size [default: 64]')
+    parser.add_argument('--win_sizes', type=int, nargs='*', default=[3, 4, 5], help='Window sizes of filters [default: [3, 4, 5]]')
     parser.add_argument('--num_fil', type=int, default=100, help='Number of filters in each window size [default: 100]')
     parser.add_argument('--s', type=float, default=3, help='L2 norm constraint on w [default: 3.0]')
     parser.add_argument('--dropout_prob', type=float, default=0.5, help='Dropout probability [default: 0.5]')
@@ -78,9 +79,6 @@ def main():
     train_X = [[0]*max(WIN_SIZES) + instance_x + [0]*max(WIN_SIZES) for instance_x in train_X]
     valid_X = [[0]*max(WIN_SIZES) + instance_x + [0]*max(WIN_SIZES) for instance_x in valid_X]
 
-    train_X, train_y = sort_data_by_length(train_X, train_y)
-    valid_X, valid_y = sort_data_by_length(valid_X, valid_y)
-
     vocab_size = len(w2i)
 
     V_init = init_V(w2v, w2i, rng)
@@ -120,6 +118,7 @@ def main():
     start_time = time.time()
     for epoch in range(N_EPOCHS):
         # Train
+        train_X, train_y = shuffle(train_X, train_y, random_state=RANDOM_STATE)
         loss_all_train = []
         pred_all_train = []
         for i in tqdm(range(n_batches_train)):
