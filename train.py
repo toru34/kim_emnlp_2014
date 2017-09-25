@@ -24,8 +24,9 @@ def main():
     parser.add_argument('--batch_size', type=int, default=32, help='Mini batch size [default: 32]')
     parser.add_argument('--win_sizes', type=list, default=[2,3,4], help='Window sizes of filters [default: [2, 3, 4]]')
     parser.add_argument('--num_fil', type=int, default=100, help='Number of filters in each window size [default: 100]')
+    parser.add_argument('--s', type=float, default=3, help='L2 norm constraint of w [default: 3.0]')
     parser.add_argument('--dropout_prob', type=float, default=0.5, help='Dropout probability [default: 0.5]')
-    parser.add_argument('--v_strategy', type=str, default='rand', help='Embedding strategy. rand: Random  initialization. static: Load pretrained embeddings and do not update during the training. non-static: Load pretrained embeddings and update during the training. [default: static]')
+    parser.add_argument('--v_strategy', type=str, default='static', help='Embedding strategy. rand: Random  initialization. static: Load pretrained embeddings and do not update during the training. non-static: Load pretrained embeddings and update during the training. [default: static]')
     parser.add_argument('--alloc_mem', type=int, default=4096, help='Amount of memory to allocate [mb] [default: 4096]')
     args = parser.parse_args()
     print(args)
@@ -37,6 +38,7 @@ def main():
     BATCH_SIZE = args.batch_size
     EMB_DIM = 300
     OUT_DIM = 1
+    L2_NORM_LIM = args.s
     NUM_FIL = args.num_fil
     DROPOUT_PROB = args.dropout_prob
     V_STRATEGY = args.v_strategy
@@ -163,6 +165,9 @@ def main():
             # Backward propagation
             mb_loss.backward()
             trainer.update()
+
+            # L2 norm constraint
+            layers[1].scale_W(L2_NORM_LIM)
 
         # Valid
         loss_all_valid = []

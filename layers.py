@@ -1,3 +1,4 @@
+import numpy as np
 import _dynet as dy
 
 class CNNText:
@@ -66,3 +67,8 @@ class Dense:
 
     def param_collection(self):
         return self.pc
+
+    def scale_W(self, l2_norm_lim):
+        W_l2norm = np.linalg.norm(self._W.as_array(), ord=2)
+        if W_l2norm > l2_norm_lim:
+            self._W.scale(l2_norm_lim/W_l2norm)
