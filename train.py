@@ -21,7 +21,11 @@ def main():
     parser = argparse.ArgumentParser(description='Convolutional Neural Networks for Sentence Classification in DyNet')
 
     parser.add_argument('--gpu', type=int, default=-1, help='GPU ID to use. For cpu, set -1 [default: -1]')
-    parser.add_argument('--n_epochs', type=int, default=25, help='Number of epochs [default: 25]')
+    parser.add_argument('--train_x_file', type=str, default='./data/train_x.txt', help='File path of train x data [default: `./data/train_x.txt`]')
+    parser.add_argument('--train_y_file', type=str, default='./data/train_y.txt', help='File path of train y data [default: `./data/train_x.txt`]')
+    parser.add_argument('--valid_x_file', type=str, default='./data/valid_x.txt', help='File path of valid x data [default: `./data/valid_x.txt`]')
+    parser.add_argument('--valid_y_file', type=str, default='./data/valid_y.txt', help='File path of valid y data [default: `./data/valid_y.txt`]')
+    parser.add_argument('--n_epochs', type=int, default=10, help='Number of epochs [default: 10]')
     parser.add_argument('--batch_size', type=int, default=64, help='Mini batch size [default: 64]')
     parser.add_argument('--win_sizes', type=int, nargs='*', default=[3, 4, 5], help='Window sizes of filters [default: [3, 4, 5]]')
     parser.add_argument('--num_fil', type=int, default=100, help='Number of filters in each window size [default: 100]')
@@ -89,7 +93,7 @@ def main():
 
     # Build model
     model = dy.Model()
-    trainer = dy.AdamTrainer(model)
+    trainer = dy.AdadeltaTrainer(model, 0.95)
 
     # V1
     V1 = model.add_lookup_parameters((vocab_size, EMB_DIM))
@@ -222,11 +226,11 @@ def main():
             time.time()-start_time,
         ))
 
-        # Save model
-        if V_STRATEGY in ['rand', 'static', 'non-static']:
-            dy.save('./model_epoch'+str(epoch+1), [V1] + layers)
-        else:
-            dy.save('./model_epoch'+str(epoch+1), [V1, V2] + layers)
+    # Save model
+    if V_STRATEGY in ['rand', 'static', 'non-static']:
+        dy.save('./model', [V1] + layers)
+    else:
+        dy.save('./model', [V1, V2] + layers)
 
 if __name__ == '__main__':
     main()
