@@ -1,6 +1,7 @@
 from sklearn.model_selection import train_test_split
 
 RANDOM_STATE = 34
+np.random.seed(RANDOM_STATE)
 
 def main():
     NEG_FILE = './rt-polaritydata/rt-polarity.neg'
@@ -18,7 +19,7 @@ def main():
     data_X = data_neg + data_pos
     data_y = ['0']*len(data_neg) + ['1']*len(data_pos)
 
-    train_X, valid_X, train_y, valid_y = train_test_split(data_X, data_y, test_size=0.1, random_state=RANDOM_STATE)
+    train_X, valid_X, train_y, valid_y = train_test_split(data_X, data_y, test_size=0.1)
 
     train_X_txt = '\n'.join(train_X)
     train_y_txt = '\n'.join(train_y)

@@ -2,8 +2,8 @@ from collections import defaultdict
 
 import numpy as np
 
-def init_V(w2v, w2i, rng):
-    V_init = rng.normal(size=(len(w2i), w2v.vector_size))
+def init_V(w2v, w2i):
+    V_init = np.random.normal(size=(len(w2i), w2v.vector_size))
     for w, i in w2i.items():
         if w in w2v:
             V_init[w2i[w]] = w2v[w]

@@ -15,7 +15,7 @@ from utils import associate_parameters, binary_pred, build_word2count, build_dat
 from layers import Dense, CNNText
 
 RANDOM_STATE = 34
-rng = np.random.RandomState(RANDOM_STATE)
+np.random.seed(RANDOM_STATE)
 
 def main():
     parser = argparse.ArgumentParser(description='Convolutional Neural Networks for Sentence Classification in DyNet')
@@ -85,7 +85,7 @@ def main():
 
     vocab_size = len(w2i)
 
-    V_init = init_V(w2v, w2i, rng)
+    V_init = init_V(w2v, w2i)
 
     with open('./w2i.dump', 'wb') as f_w2i, open('./i2w.dump', 'wb') as f_i2w:
         pickle.dump(w2i, f_w2i)
@@ -93,7 +93,7 @@ def main():
 
     # Build model
     model = dy.Model()
-    trainer = dy.AdadeltaTrainer(model, 0.95)
+    trainer = dy.AdamTrainer(model)
 
     # V1
     V1 = model.add_lookup_parameters((vocab_size, EMB_DIM))
@@ -122,7 +122,7 @@ def main():
     start_time = time.time()
     for epoch in range(N_EPOCHS):
         # Train
-        train_X, train_y = shuffle(train_X, train_y, random_state=RANDOM_STATE)
+        train_X, train_y = shuffle(train_X, train_y)
         loss_all_train = []
         pred_all_train = []
         for i in tqdm(range(n_batches_train)):
