@@ -24,7 +24,7 @@ If you use your own dataset, please specify the paths of train and valid data fi
 
 ### 3. Train
 #### Arguments
-- `--gpu`: GPU ID to use. For cpu, set `-1` [default: `-1`]
+- `--gpu`: GPU ID to use. For cpu, set `-1` [default: `0`]
 - `--train_x_file`: File path of train x data [default: `./data/train_x.txt`]
 - `--train_y_file`: File path of train y data [default: `./data/train_y.txt`]
 - `--valid_x_file`: File path of valid x data [default: `./data/valid_x.txt`]
@@ -49,7 +49,7 @@ python train.py --num_epochs 20
 
 ### 4. Test
 #### Arguments
-- `--gpu`: GPU ID to use. For cpu, set `-1` [default: `-1`]
+- `--gpu`: GPU ID to use. For cpu, set `-1` [default: `0`]
 - `--model_file`: Model to use for prediction [default: `./model`]
 - `--input_file`: Input file path [default: `./data/valid_x.txt`]
 - `--output_file`: Output file path [default: `./pred_y.txt`]

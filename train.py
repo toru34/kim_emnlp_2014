@@ -20,7 +20,7 @@ np.random.seed(RANDOM_STATE)
 def main():
     parser = argparse.ArgumentParser(description='Convolutional Neural Networks for Sentence Classification in DyNet')
 
-    parser.add_argument('--gpu', type=int, default=-1, help='GPU ID to use. For cpu, set -1 [default: -1]')
+    parser.add_argument('--gpu', type=int, default=0, help='GPU ID to use. For cpu, set -1 [default: 0]')
     parser.add_argument('--train_x_file', type=str, default='./data/train_x.txt', help='File path of train x data [default: `./data/train_x.txt`]')
     parser.add_argument('--train_y_file', type=str, default='./data/train_y.txt', help='File path of train y data [default: `./data/train_x.txt`]')
     parser.add_argument('--valid_x_file', type=str, default='./data/valid_x.txt', help='File path of valid x data [default: `./data/valid_x.txt`]')
