@@ -63,7 +63,7 @@ python test.py
 ```
 
 ### 5. Results
-All examples below are trained with the default arguments except for `v_strategy`.
+All examples below are trained with the default arguments except `v_strategy`.
 ##### `v_strategy`: static
 ```
 EPOCH: 1, Train Loss: 0.625 (F1: 0.644, Acc: 0.647), Valid Loss: 0.513 (F1: 0.765, Acc: 0.756), Time: 22.341[s]
