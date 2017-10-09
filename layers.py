@@ -6,7 +6,7 @@ class CNNText:
         pc = model.add_subcollection()
 
         # CNN
-        self._Ws = [pc.add_parameters((win_sizes, emb_dim, num_cha, num_fil)) for win_sizes in win_sizes]
+        self._Ws = [pc.add_parameters((win_size, emb_dim, num_cha, num_fil)) for win_size in win_sizes]
         self._bs = [pc.add_parameters((num_fil)) for _ in win_sizes]
         self.function = function
         self.dropout_prob = dropout_prob
