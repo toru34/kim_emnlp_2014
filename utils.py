@@ -24,9 +24,9 @@ def associate_parameters(layers):
     for layer in layers:
         layer.associate_parameters()
 
-def f_props(layers, x, train=True):
+def f_props(layers, x, test=False):
     for layer in layers:
-        x = layer(x, train)
+        x = layer(x, test)
     return x
 
 def build_word2count(file_path, w2c=None, vocab=None, min_len=1, max_len=100):

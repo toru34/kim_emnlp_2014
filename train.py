@@ -153,7 +153,7 @@ def main():
                     x_embs = dy.concatenate([x_embs1, x_embs2], d=2)
 
                 t = dy.scalarInput(instance_y)
-                y = f_props(layers, x_embs, train=True)
+                y = f_props(layers, x_embs, test=False)
 
                 loss = dy.binary_log_loss(y, t)
                 losses.append(loss)
@@ -203,7 +203,7 @@ def main():
                     x_embs = dy.concatenate([x_embs1, x_embs2], d=2)
 
                 t = dy.scalarInput(instance_y)
-                y = f_props(layers, x_embs, train=False)
+                y = f_props(layers, x_embs, test=True)
 
                 loss = dy.binary_log_loss(y, t)
                 losses.append(loss)
