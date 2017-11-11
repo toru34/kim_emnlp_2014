@@ -111,14 +111,14 @@ def main():
         V1_UPDATE = False
     else: # 'rand', 'non-static'
         V1_UPDATE = True
-    make_emb_zero(V1, [w2i['<s>'], w2i['</s>']])
+    make_emb_zero(V1, [w2i['<s>'], w2i['</s>']], EMB_DIM)
 
     # V2
     if V_STRATEGY == 'multichannel':
         V2 = model.add_lookup_parameters((VOCAB_SIZE, EMB_DIM))
         V2.init_from_array(V_init)
         V2_UPDATE = True
-        make_emb_zero(V2, [w2i['<s>'], w2i['</s>']])
+        make_emb_zero(V2, [w2i['<s>'], w2i['</s>']], EMB_DIM)
 
     layers = [
         CNNText(model, EMB_DIM, WIN_SIZES, NUM_CHA, NUM_FIL, dy.tanh, DROPOUT_PROB),
@@ -176,9 +176,9 @@ def main():
 
             # Make padding embs zero
             if V_STRATEGY in ['rand', 'non-static']:
-                make_emb_zero(V1, [w2i['<s>'], w2i['</s>']])
+                make_emb_zero(V1, [w2i['<s>'], w2i['</s>']], EMB_DIM)
             elif V_STRATEGY in ['multichannel']:
-                make_emb_zero(V2, [w2i['<s>'], w2i['</s>']])
+                make_emb_zero(V2, [w2i['<s>'], w2i['</s>']], EMB_DIM)
 
         # Valid
         loss_all_valid = []

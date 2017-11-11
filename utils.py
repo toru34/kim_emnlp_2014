@@ -9,8 +9,7 @@ def init_V(w2v, w2i):
             V_init[w2i[w]] = w2v[w]
     return V_init
 
-def make_emb_zero(V, word_ids):
-    emb_dim = V.shape()[1]
+def make_emb_zero(V, word_ids, emb_dim):
     for word_id in word_ids:
         V.init_row(word_id, np.zeros(emb_dim))
 
