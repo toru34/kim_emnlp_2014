@@ -16,7 +16,7 @@ class CNNText:
         self.pc   = pc
         self.spec = (emb_dim, win_sizes, in_fil, out_fil, function, dropout_prob)
 
-    def __call__(self, x, test=False):
+    def forward(self, x, test=False):
         x_len = x.dim()[0][0]
 
         convds = [dy.conv2d_bias(x, W, b, stride=(1, 1)) for W, b in zip(self.Ws, self.bs)]
@@ -55,7 +55,7 @@ class Dense:
         self.pc   = pc
         self.spec = (in_dim, out_dim, function)
 
-    def __call__(self, x, test=False):
+    def forward(self, x, test=False):
         return self.function(self.W*x + self.b)
 
     def associate_parameters(self):

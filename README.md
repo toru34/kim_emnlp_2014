@@ -25,10 +25,10 @@ If you use your own dataset, please specify the paths of train and valid data fi
 ### 3. Train
 #### Arguments
 - `--gpu`: GPU ID to use. For cpu, set `-1` [default: `0`]
-- `--train_x_file`: File path of train x data [default: `./data/train_x.txt`]
-- `--train_y_file`: File path of train y data [default: `./data/train_y.txt`]
-- `--valid_x_file`: File path of valid x data [default: `./data/valid_x.txt`]
-- `--valid_y_file`: File path of valid y data [default: `./data/valid_y.txt`]
+- `--train_x_path`: File path of train x data [default: `./data/train_x.txt`]
+- `--train_y_path`: File path of train y data [default: `./data/train_y.txt`]
+- `--valid_x_path`: File path of valid x data [default: `./data/valid_x.txt`]
+- `--valid_y_path`: File path of valid y data [default: `./data/valid_y.txt`]
 - `--n_epochs`: Number of epochs [default: `10`]
 - `--batch_size`: Mini batch size [default: `64`]
 - `--win_sizes`: Window sizes of filters [default: `[3, 4, 5]`]
@@ -44,7 +44,7 @@ If you use your own dataset, please specify the paths of train and valid data fi
 
 #### Command example
 ```
-python train.py --num_epochs 20
+python train_manualbatch.py --num_epochs 20
 ```
 
 ### 4. Test

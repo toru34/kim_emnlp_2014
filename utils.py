@@ -9,6 +9,29 @@ def init_V(w2v, w2i):
             V_init[w2i[w]] = w2v[w]
     return V_init
 
+def make_emb_zero(V, word_ids):
+    emb_dim = V.shape()[1]
+    for word_id in word_ids:
+        V.init_row(word_id, np.zeros(emb_dim))
+
+def binary_pred(x):
+    return np.piecewise(x, [x < 0.5, x >= 0.5], [0, 1]).astype('int32')
+
+def forwards(layers, x, test=False):
+    for layer in layers:
+        x = layer.forward(x, test)
+    return x
+
+def associate_parameters(layers):
+    for layer in layers:
+        layer.associate_parameters()
+
+def build_batch(data, w2i, max_win):
+    max_len = max(len(datum) for datum in data)
+
+    data = [[w2i['<s>']]*(max_win - 1) + datum + [w2i['</s>']]*(max_len - len(datum)) for datum in data]
+    return np.array(data)
+
 def sort_data_by_length(data_X, data_y):
     data_X_lens = [len(com) for com in data_X]
     sorted_data_indexes = sorted(range(len(data_X_lens)), key=lambda x: -data_X_lens[x])
@@ -17,69 +40,65 @@ def sort_data_by_length(data_X, data_y):
     data_y = [data_y[ind] for ind in sorted_data_indexes]
     return data_X, data_y
 
-def binary_pred(x):
-    return np.piecewise(x, [x < 0.5, x >= 0.5], [0, 1])
+def build_w2c(data_path, n_data=1e+10, len_lim=1e+10, vocab=None):
+    w2c = defaultdict(lambda: 0)
 
-def associate_parameters(layers):
-    for layer in layers:
-        layer.associate_parameters()
-
-def f_props(layers, x, test=False):
-    for layer in layers:
-        x = layer(x, test)
-    return x
-
-def build_word2count(file_path, w2c=None, vocab=None, min_len=1, max_len=100):
-    if w2c is None:
-        w2c = defaultdict(lambda: 0)
-    for line in open(file_path, encoding='utf-8', errors='ignore'):
+    count = 0
+    for line in open(data_path):
         sentence = line.strip().split()
-        if len(sentence) < min_len or len(sentence) > max_len:
+        if len(sentence) > len_lim:
             continue
+
         for word in sentence:
             if vocab:
                 if word in vocab:
-                    w2c[word]+= 1
+                    w2c[word] += 1
             else:
                 w2c[word] += 1
+
+        count += 1
+        if count >= n_data:
+            break
+
     return w2c
 
-def encode(sentence, w2i, unksym='<unk>'):
+def build_w2i(data_path, w2c, unk='<unk>', vocab_size=int(1e+10)):
+    sorted_w2c = sorted(w2c.items(), key=lambda x: -x[1])
+    sorted_w = [w for w, c in sorted_w2c if w != unk]
+
+    w2i = {w: np.int32(i+3) for i, w in enumerate(sorted_w[:vocab_size-3])}
+    w2i['<s>'], w2i['</s>'], w2i[unk] = np.int32(0), np.int32(1), np.int32(2)
+    i2w = {i: w for w, i in w2i.items()}
+
+    return w2i, i2w
+
+def encode(sentence, w2i, unk='<unk>'):
     encoded_sentence = []
     for word in sentence:
         if word in w2i:
             encoded_sentence.append(w2i[word])
         else:
-            encoded_sentence.append(w2i[unksym])
+            encoded_sentence.append(w2i[unk])
     return encoded_sentence
 
-def build_dataset(file_path, vocab_size=999999, w2c=None, w2i=None, target=False, eos=False, padid=False, unksym='<unk>', min_len=1, max_len=100):
-    if w2i is None:
-        sorted_w2c = sorted(w2c.items(), key=lambda x: -x[1])
-        sorted_w = [w for w, c in sorted_w2c]
+def build_dataset(x_path, y_path, w2i, unk='<unk>', n_data=1e+10, len_lim=1e+10):
+    data_x, data_y = [], []
 
-        w2i = {}
-        word_id = 0
-        if eos:
-            w2i['<s>'], w2i['</s>'] = np.int32(word_id), np.int32(word_id+1)
-            word_id += 2
-        if padid:
-            w2i['<pad>'] = np.int32(word_id)
-            word_id += 1
-        if unksym not in sorted_w:
-            w2i[unksym] = np.int32(word_id)
-            word_id += 1
-        w2i_update = {w: np.int32(i+word_id) for i, w in enumerate(sorted_w[:vocab_size-word_id])}
-        w2i.update(w2i_update)
+    count = 0
+    for line_x, line_y in zip(open(x_path), open(y_path)):
+        sentence_x = line_x.strip().split()
+        id_y       = int(line_y)
 
-    data = []
-    for line in open(file_path, encoding='utf-8', errors='ignore'):
-        sentence = line.strip().split()
-        if len(sentence) < min_len or len(sentence) > max_len:
+        if len(sentence_x) > len_lim:
             continue
-        if target:
-            sentence = ['<s>'] + sentence + ['</s>']
-        encoded_sentence = encode(sentence, w2i, unksym)
-        data.append(encoded_sentence)
-    i2w = {i: w for w, i in w2i.items()}
-    return data, w2i, i2w
+
+        encoded_sentence_x = encode(sentence_x, w2i, unk=unk)
+
+        data_x.append(encoded_sentence_x)
+        data_y.append(id_y)
+
+        count += 1
+        if count >= n_data:
+            break
+
+    return data_x, data_y
