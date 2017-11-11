@@ -66,17 +66,16 @@ python test.py
 All examples below are trained with the default arguments except `v_strategy`.
 ##### `v_strategy`: static
 ```
-EPOCH: 1, Train Loss: 0.625 (F1: 0.644, Acc: 0.647), Valid Loss: 0.513 (F1: 0.765, Acc: 0.756), Time: 22.341[s]
-EPOCH: 2, Train Loss: 0.450 (F1: 0.784, Acc: 0.787), Valid Loss: 0.484 (F1: 0.801, Acc: 0.783), Time: 44.712[s]
-EPOCH: 3, Train Loss: 0.372 (F1: 0.835, Acc: 0.836), Valid Loss: 0.463 (F1: 0.799, Acc: 0.791), Time: 67.112[s]
-EPOCH: 4, Train Loss: 0.304 (F1: 0.879, Acc: 0.879), Valid Loss: 0.458 (F1: 0.811, Acc: 0.800), Time: 89.552[s]
-EPOCH: 5, Train Loss: 0.241 (F1: 0.916, Acc: 0.916), Valid Loss: 0.469 (F1: 0.812, Acc: 0.796), Time: 112.099[s]
-EPOCH: 6, Train Loss: 0.185 (F1: 0.945, Acc: 0.945), Valid Loss: 0.472 (F1: 0.806, Acc: 0.804), Time: 134.670[s]
-EPOCH: 7, Train Loss: 0.137 (F1: 0.969, Acc: 0.969), Valid Loss: 0.485 (F1: 0.809, Acc: 0.809), Time: 157.273[s]
-EPOCH: 8, Train Loss: 0.101 (F1: 0.983, Acc: 0.983), Valid Loss: 0.490 (F1: 0.812, Acc: 0.811), Time: 179.885[s]
-EPOCH: 9, Train Loss: 0.082 (F1: 0.989, Acc: 0.989), Valid Loss: 0.493 (F1: 0.813, Acc: 0.807), Time: 202.485[s]
-EPOCH: 10, Train Loss: 0.072 (F1: 0.990, Acc: 0.990), Valid Loss: 0.494 (F1: 0.810, Acc: 0.806), Time: 225.067[s]
-
+EPOCH: 1, Train Loss:: 0.636 (F1:: 0.640, Acc:: 0.642), Valid Loss:: 0.567 (F1:: 0.606, Acc:: 0.694), Time:: 1.614[s]
+EPOCH: 2, Train Loss:: 0.474 (F1:: 0.770, Acc:: 0.774), Valid Loss:: 0.494 (F1:: 0.734, Acc:: 0.761), Time:: 4.307[s]
+EPOCH: 3, Train Loss:: 0.393 (F1:: 0.829, Acc:: 0.830), Valid Loss:: 0.460 (F1:: 0.776, Acc:: 0.785), Time:: 6.987[s]
+EPOCH: 4, Train Loss:: 0.329 (F1:: 0.866, Acc:: 0.867), Valid Loss:: 0.454 (F1:: 0.782, Acc:: 0.789), Time:: 9.686[s]
+EPOCH: 5, Train Loss:: 0.272 (F1:: 0.897, Acc:: 0.898), Valid Loss:: 0.452 (F1:: 0.783, Acc:: 0.792), Time:: 12.384[s]
+EPOCH: 6, Train Loss:: 0.217 (F1:: 0.929, Acc:: 0.929), Valid Loss:: 0.445 (F1:: 0.808, Acc:: 0.809), Time:: 15.088[s]
+EPOCH: 7, Train Loss:: 0.167 (F1:: 0.956, Acc:: 0.956), Valid Loss:: 0.446 (F1:: 0.813, Acc:: 0.810), Time:: 17.798[s]
+EPOCH: 8, Train Loss:: 0.129 (F1:: 0.971, Acc:: 0.972), Valid Loss:: 0.452 (F1:: 0.810, Acc:: 0.805), Time:: 20.509[s]
+EPOCH: 9, Train Loss:: 0.102 (F1:: 0.981, Acc:: 0.981), Valid Loss:: 0.458 (F1:: 0.809, Acc:: 0.806), Time:: 23.202[s]
+EPOCH: 10, Train Loss:: 0.086 (F1:: 0.988, Acc:: 0.988), Valid Loss:: 0.459 (F1:: 0.810, Acc:: 0.805), Time:: 25.899[s]
 ```
 ##### `v_strategy`: non-static
 ```

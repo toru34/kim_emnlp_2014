@@ -1,5 +1,4 @@
 import os
-# import sys
 import math
 import time
 import pickle
@@ -23,8 +22,10 @@ try:
     os.mkdir('results')
 except:
     pass
-os.mkdir(RESULTS_DIR)
-# sys.stdout = open(os.path.join(RESULTS_DIR, 'output.txt'), 'w')
+try:
+    os.mkdir(RESULTS_DIR)
+except:
+    pass
 
 def main():
     parser = argparse.ArgumentParser(description='Convolutional Neural Networks for Sentence Classification in DyNet')
