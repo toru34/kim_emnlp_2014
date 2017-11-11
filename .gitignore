@@ -8,7 +8,6 @@ data
 *.dump
 tmp.py
 *.gz
-train_manualbatch.py
 rt-polaritydata
 *.bin
 _*
